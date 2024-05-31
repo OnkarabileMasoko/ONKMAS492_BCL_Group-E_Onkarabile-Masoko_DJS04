@@ -1,179 +1,130 @@
-import { books, authors, genres, BOOKS_PER_PAGE } from "./data.js";
-//import ".book-preview.js";
-// Initialize page number and matches array
+ /**
+ * This module sets up the event listeners and functionality for the book preview and search features of the application.
+ *
+ * It imports the necessary modules and data, creates instances of the `BookPreview`, `ThemeSwitcher`, and `BookSearcher` components,
+ * and sets up the event listeners for the search functionality and the "Show More" button.
+ *
+ * The `addEventListeners()` function is responsible for setting up the event listeners and handling the search and "Show More" functionality.
+ */
+
+import { books, authors, genres, booksPerPage } from "./modules/data.js";
+
+import {
+  handleElementClickEvent,
+  generateDocumentFragments,
+} from "./modules/app.js";
+
+import { BookPreview } from "./component/booklist.js";
+import { default as ThemeSwitcher } from "./component/theme.js";
+import { default as BookSearcher } from "./component/search.js";
+
+// Initialize page variable
 let page = 1;
-let matches = books;
 
-// Function to get DOM elements
-const getElement = (selector) => document.querySelector(selector);
-
-// Function to create and append book previews
-const createBookPreviews = (books, container) => {
-  const fragment = document.createDocumentFragment();
-  books.forEach(({ author, id, image, title }) => {
-    const element = document.createElement("button");
-    element.classList = "preview";
-    element.setAttribute("data-preview", id);
-    element.innerHTML = `
-      <img class="preview__image" src="${image}" />
-      <div class="preview__info">
-        <h3 class="preview__title">${title}</h3>
-        <div class="preview__author">${authors[author]}</div>
-      </div>
-    `;
-    fragment.appendChild(element);
-  });
-  container.appendChild(fragment);
-};
-
-// Function to create and append options to a select element
-const createOptions = (options, defaultOption, container) => {
-  const fragment = document.createDocumentFragment();
-  const firstOption = document.createElement("option");
-  firstOption.value = "any";
-  firstOption.innerText = defaultOption;
-  fragment.appendChild(firstOption);
-  Object.entries(options).forEach(([id, name]) => {
-    const element = document.createElement("option");
-    element.value = id;
-    element.innerText = name;
-    fragment.appendChild(element);
-  });
-  container.appendChild(fragment);
-};
-
-// Function to apply theme
-const applyTheme = (theme) => {
-  const isNight = theme === "night";
-  document.documentElement.style.setProperty(
-    "--color-dark",
-    isNight ? "255, 255, 255" : "10, 10, 20"
-  );
-  document.documentElement.style.setProperty(
-    "--color-light",
-    isNight ? "10, 10, 20" : "255, 255, 255"
-  );
-};
-
-// Function to update "Show more" button text and state
-const updateShowMoreButton = () => {
-    const remainingBooks = matches.length - page * BOOKS_PER_PAGE;
-    const button = getElement("[data-list-button]");
-    
-    // Setting innerHTML once to avoid overriding issues
-    button.innerHTML = `
-      <span>Show more</span>
-      <span class="list__remaining">(${remainingBooks > 0 ? remainingBooks : 0})</span>
-    `;
-    
-    // Setting the disabled state of the button
-    button.disabled = remainingBooks <= 0;
-  };
-  
-
-// Event listener functions
-const closeOverlay = (selector) => {
-  getElement(selector).open = false;
-};
-
-const openOverlay = (selector, focusSelector = null) => {
-  getElement(selector).open = true;
-  if (focusSelector) getElement(focusSelector).focus();
-};
-
-const applySearchFilters = (filters) => {
-  return books.filter((book) => {
-    const titleMatch =
-      filters.title.trim() === "" ||
-      book.title.toLowerCase().includes(filters.title.toLowerCase());
-    const authorMatch =
-      filters.author === "any" || book.author === filters.author;
-    const genreMatch =
-      filters.genre === "any" || book.genres.includes(filters.genre);
-    return titleMatch && authorMatch && genreMatch;
-  });
-};
-
-// Event listeners
-getElement("[data-search-cancel]").addEventListener("click", () =>
-  closeOverlay("[data-search-overlay]")
-);
-getElement("[data-settings-cancel]").addEventListener("click", () =>
-  closeOverlay("[data-settings-overlay]")
-);
-getElement("[data-header-search]").addEventListener("click", () =>
-  openOverlay("[data-search-overlay]", "[data-search-title]")
-);
-getElement("[data-header-settings]").addEventListener("click", () =>
-  openOverlay("[data-settings-overlay]")
-);
-getElement("[data-list-close]").addEventListener("click", () =>
-  closeOverlay("[data-list-active]")
+// Create a new instance of BookPreview with the provided data and element ID
+const bookPreview = new BookPreview(
+    books,
+    genres,
+    authors,
+    booksPerPage,
+    page,
+  "book-list-preview"
 );
 
-getElement("[data-settings-form]").addEventListener("submit", (event) => {
-  event.preventDefault();
-  const formData = new FormData(event.target);
-  const { theme } = Object.fromEntries(formData);
-  applyTheme(theme);
-  closeOverlay("[data-settings-overlay]");
-});
+// Create a new instance of BookSearcher and assign it to bookSearcher variable
+const bookSearcher = new BookSearcher("[data-header-button]"),
+  bookSeacherElements = bookSearcher.elements;
 
-getElement("[data-search-form]").addEventListener("submit", (event) => {
-  event.preventDefault();
-  const formData = new FormData(event.target);
-  const filters = Object.fromEntries(formData);
-  matches = applySearchFilters(filters);
-  page = 1;
-  getElement("[data-list-message]").classList.toggle(
-    "list__message_show",
-    matches.length < 1
-  );
-  getElement("[data-list-items]").innerHTML = "";
-  createBookPreviews(
-    matches.slice(0, BOOKS_PER_PAGE),
-    getElement("[data-list-items]")
-  );
-  updateShowMoreButton();
-  window.scrollTo({ top: 0, behavior: "smooth" });
-  closeOverlay("[data-search-overlay]");
-});
+// Create a new instance of ThemeSwitcher with the provided selector
+new ThemeSwitcher("[data-header-button]");
 
-getElement("[data-list-button]").addEventListener("click", () => {
-  createBookPreviews(
-    matches.slice(page * BOOKS_PER_PAGE, (page + 1) * BOOKS_PER_PAGE),
-    getElement("[data-list-items]")
-  );
-  page += 1;
-  updateShowMoreButton();
-});
+// Get the listItemsElement from the bookPreview instance
+const listItemsElement = bookPreview.listItemsElement;
 
-getElement("[data-list-items]").addEventListener("click", (event) => {
-  const pathArray = Array.from(event.composedPath());
-  const active = pathArray.find((node) => node?.dataset?.preview);
-  if (active) {
-    const book = books.find((book) => book.id === active.dataset.preview);
-    if (book) {
-      getElement("[data-list-active]").open = true;
-      getElement("[data-list-blur]").src = book.image;
-      getElement("[data-list-image]").src = book.image;
-      getElement("[data-list-title]").innerText = book.title;
-      getElement("[data-list-subtitle]").innerText = `${
-        authors[book.author]
-      } (${new Date(book.published).getFullYear()})`;
-      getElement("[data-list-description]").innerText = book.description;
+// Generate document fragments for genreHtml, authorsHtml, newItems, and fragment
+const [genreHtml, authorsHtml, newItems, fragment] =
+  generateDocumentFragments(5);
+
+// Define searchFormInputs object with genre and author properties
+const searchFormInputs = {
+  genres: {
+    textContent: "All Genres",
+    attribute: "[data-search-genres]",
+  },
+  authors: {
+    textContent: "All Authors",
+    attribute: "[data-search-authors]",
+  },
+};
+
+// Function to add event listeners
+function addEventListeners() {
+  // Add click event listener to the element with data-header-search attribute
+  handleElementClickEvent(
+    document.querySelector("[data-header-search]"),
+    () => {
+      // Show the book searcher overlay modal
+      bookSearcher.overlayModal(true);
+      // Set the search form options for genres
+      bookSearcher.searchFormOptions(
+        genreHtml,
+        searchFormInputs.genres,
+        genres
+      );
+      // Set the search form options for authors
+      bookSearcher.searchFormOptions(
+        authorsHtml,
+        searchFormInputs.authors,
+        authors
+      );
+      // Get the search form element
+      const searchForm = document.querySelector("[data-search-form]");
+
+      // Handle the search form submit event
+      bookSearcher.handleSearchFormSubmit(searchForm, (event) => {
+        event.preventDefault();
+        // Search for books based on the form input and display them
+        const booksRemaining = bookPreview.searchDisplayBooks({
+          event,
+          books,
+          page,
+          booksPerPage,
+          newItems,
+          listItemsElement,
+          searchOverlay: bookSeacherElements.searchOverlay,
+        });
+
+        // Show the "show more" button based on whether there are more books remaining
+        bookPreview.showMoreButton(booksRemaining.status, booksRemaining.page);
+        // Hide the book searcher overlay modal
+        bookSearcher.showOverlayModal(false);
+      });
     }
-  }
+  );
+}
+
+// Add click event listener to the bookPreview.listButton element
+handleElementClickEvent(bookPreview.listButton, () => {
+  // Calculate the next list number based on the current page and booksPerPage
+  const nextListNumber = (page + 1) * booksPerPage;
+  // Get the books to display in the next list
+  const listBooksPerPage = books.slice(page * booksPerPage, nextListNumber);
+  // Call the createBookList method of the bookPreview instance, passing the listBooksPerPage, booksPerPage, and fragmentElement as arguments
+  bookPreview.createBookList({
+    books: listBooksPerPage,
+    booksPerPage,
+    fragmentElement: fragment,
+  });
+
+  // Increment the page variable by 1
+  page += 1;
+
+  // Calculate whether there are more books remaining based on the length of the books array and the calculated nextListNumber
+  const hasBooksRemaining = books.length - nextListNumber >= booksPerPage;
+
+  // Call the showMoreButton method of the bookPreview instance, passing the hasBooksRemaining and page as arguments
+  bookPreview.showMoreButton(hasBooksRemaining, page);
 });
 
-// Initial setup
-createOptions(genres, "All Genres", getElement("[data-search-genres]"));
-createOptions(authors, "All Authors", getElement("[data-search-authors]"));
-applyTheme(
-  window.matchMedia("(prefers-color-scheme: dark)").matches ? "night" : "day"
-);
-createBookPreviews(
-  matches.slice(0, BOOKS_PER_PAGE),
-  getElement("[data-list-items]")
-);
-updateShowMoreButton();
+// Call the addEventListeners function to add the event listener to the bookPreview.listButton element
+addEventListeners();
